@@ -86,118 +86,79 @@
 
         <!-- Your radar script - FIXED timing -->
              <!-- DYNAMIC radar - updates for visible districts -->
-        <script>
-        // Real data from your CSV [file:40]
-        var districtData = [
-          {name: 'I.', pop: 23685},
-          {name: 'II.', pop: 86567},
-          {name: 'III.', pop: 124746},
-          {name: 'IV.', pop: 94391},
-          {name: 'V.', pop: 21931},
-          {name: 'VI.', pop: 35441},
-          {name: 'VII.', pop: 48943},
-          {name: 'VIII.', pop: 70048},
-          {name: 'IX.', pop: 59588},
-          {name: 'X.', pop: 75628},
-          {name: 'XI.', pop: 141090},
-          {name: 'XII.', pop: 57295},
-          {name: 'XIII.', pop: 122973},
-          {name: 'XIV.', pop: 118705},
-          {name: 'XV.', pop: 77091},
-          {name: 'XVI.', pop: 73270},
-          {name: 'XVII.', pop: 84922},
-          {name: 'XVIII.', pop: 99400},
-          {name: 'XIX.', pop: 56507},
-          {name: 'XX.', pop: 63512},
-          {name: 'XXI.', pop: 70442},
-          {name: 'XXII.', pop: 56534},
-          {name: 'XXIII.', pop: 22633}
-        ];
+       <script>
+// === PRODUCTION DYNAMIC RADAR FOR Kerletek_1 === [file:40]
+var districtData = [  // fallback CSV data
+  {name:'I.',pop:23685},{name:'II.',pop:86567},{name:'III.',pop:124746},{name:'IV.',pop:94391},
+  {name:'V.',pop:21931},{name:'VI.',pop:35441},{name:'VII.',pop:48943},{name:'VIII.',pop:70048},
+  {name:'IX.',pop:59588},{name:'X.',pop:75628},{name:'XI.',pop:141090},{name:'XII.',pop:57295},
+  {name:'XIII.',pop:122973},{name:'XIV.',pop:118705},{name:'XV.',pop:77091},{name:'XVI.',pop:73270},
+  {name:'XVII.',pop:84922},{name:'XVIII.',pop:99400},{name:'XIX.',pop:56507},{name:'XX.',pop:63512},
+  {name:'XXI.',pop:70442},{name:'XXII.',pop:56534},{name:'XXIII.',pop:22633}
+];
 
-        function drawRadar(names, pops, title) {
-          names.push(names[0]);
-          pops.push(pops[0]);
-          var data = [{
-            type: 'scatterpolar',
-            r: pops,
-            theta: names,
-            fill: 'toself',
-            line: {color: '#2E8B57', width: 3},
-            marker: {color: '#90EE90'}
-          }];
-          var layout = {
-            title: title,
-            font: {size: 14, family: 'Arial'},
-            polar: {
-              radialaxis: {visible: true, range: [0, 150000], tickvals: [50000, 100000]},
-              bgcolor: 'rgba(248,255,248,0.9)'
-            },
-            margin: {l: 50, r: 50, t: 80, b: 50},
-            showlegend: false,
-            paper_bgcolor: 'rgba(255,255,255,0.98)'
-          };
-          Plotly.newPlot('plotly-panel', data, layout, {responsive: true});
-        }
+function drawRadar(names, pops, title) {
+  names = [...names, names[0]]; pops = [...pops, pops[0]];
+  Plotly.newPlot('plotly-panel', [{
+    type: 'scatterpolar', r: pops, theta: names, fill: 'toself',
+    line: {color: '#006400', width: 3}, marker: {color: '#98FB98'}
+  }], {
+    title: `${title} (${names.length-1} kerület)`, 
+    polar: {radialaxis: {range: [0,150000]}},
+    font: {size: 13}, margin: {t:90}, showlegend: false
+  });
+}
 
-        // NEW: Get visible districts from map extent
-        function updateVisibleRadar() {
-          if (typeof map === 'undefined') {
-            console.log('Map not ready yet');
-            return;
-          }
+// === CORE FUNCTION: Visible districts ===
+function updateVisibleKeruletek() {
+  try {
+    if (!map) throw 'No map';
+    
+    var extent = map.getView().calculateExtent(map.getSize());
+    var keruletLayer = map.getLayers().getArray().find(l => 
+      l.get('name')?.includes('Kerletek') || l.get('title')?.includes('Kerletek')
+    );
+    
+    if (!keruletLayer) {
+      // Fallback: all districts
+      drawRadar(districtData.map(d=>d.name), districtData.map(d=>d.pop), 'Kerletek réteg keresése...');
+      return;
+    }
+    
+    var source = keruletLayer.getSource();
+    var visible = [];
+    
+    source.forEachFeature(f => {
+      if (f.getGeometry().intersectsExtent(extent)) {
+        var name = f.get('Kerületszám') || f.get('name') || f.get('kerület') || 'N/A';
+        var popField = f.get('Népesség(2022)[2]') || f.get('Népesség') || f.get('population');
+        var pop = parseInt(popField) || 0;
+        if (name !== 'N/A' && pop > 0) visible.push({name, pop});
+      }
+    });
+    
+    if (visible.length === 0) {
+      drawRadar(['Nincs látható'], [0], 'Nincs kerület a nézetben');
+    } else {
+      drawRadar(visible.map(v=>v.name), visible.map(v=>v.pop), 'LÁTHATÓ KERÜLETEK');
+    }
+    
+  } catch(e) {
+    console.error('Radar error:', e);
+    drawRadar(['Hiba'], [0], 'Reload');
+  }
+}
 
-          var extent = map.getView().calculateExtent(map.getSize());
-          console.log('Current extent:', extent);
+// === INIT + EVENTS ===
+setTimeout(() => {
+  if (Plotly && map) {
+    updateVisibleKeruletek();
+    map.on('moveend', updateVisibleKeruletek);
+    console.log('✅ Dynamic Kerületek radar READY!');
+  }
+}, 2500);
+</script>
 
-          // Find Kerletek_1 layer (your districts)
-          var keruletLayer = null;
-          map.getLayers().forEach(function(layer) {
-            if (layer.get('name') && layer.get('name').indexOf('Kerletek') >= 0) {
-              keruletLayer = layer;
-            }
-          });
-
-          if (!keruletLayer) {
-            drawRadar(districtData.map(d => d.name), districtData.map(d => d.pop), 'Kerületek réteg nem található');
-            return;
-          }
-
-          var source = keruletLayer.getSource();
-          var visibleNames = [];
-          var visiblePops = [];
-
-          source.forEachFeature(function(feature) {
-            if (feature.getGeometry().intersectsExtent(extent)) {
-              var name = feature.get('Kerületszám') || feature.get('name') || 'N/A';
-              var pop = parseInt(feature.get('Népesség(2022)[2]')) || 0;
-              if (name && pop > 0) {
-                visibleNames.push(name);
-                visiblePops.push(pop);
-              }
-            }
-          });
-
-          if (visibleNames.length === 0) {
-            drawRadar(['Nincs'], [0], 'Nincs látható kerület');
-          } else {
-            drawRadar(visibleNames, visiblePops, visibleNames.length + ' látható kerület népessége');
-          }
-        }
-
-        // Wait longer for full map load, then hook events
-        setTimeout(function() {
-          if (typeof Plotly !== 'undefined' && typeof map !== 'undefined') {
-            // Initial
-            updateVisibleRadar();
-            console.log('Dynamic radar ready!');
-
-            // Update on pan/zoom
-            map.on('moveend', updateVisibleRadar);
-            
-          } else {
-            console.error('Map or Plotly missing');
-          }
-        }, 3000);
-        </script>
     </body>
 </html>
+
