@@ -90,9 +90,63 @@
 // DEBUG: Find exact layer names
 var districtData = [{name:'I.',pop:23685},{name:'II.',pop:86567}]; // short
 
-function drawDebug(title, info) {
-  Plotly.newPlot('plotly-panel', [], {title: title + '\n' + info});
+function updateVisibleKeruletek() {
+  try {
+    if (!map) throw 'No map';
+    
+    // ZOOM OUT first to see all Budapest
+    map.getView().setZoom(10);
+    
+    var extent = map.getView().calculateExtent(map.getSize());
+    console.log('Extent:', extent);
+    
+    var keruletLayer = map.getLayers().getArray().find(l => 
+      l.get('name')?.toLowerCase().includes('kerlet') || 
+      l.get('title')?.toLowerCase().includes('kerlet')
+    );
+    
+    if (!keruletLayer) {
+      drawRadar(districtData.map(d=>d.name), districtData.map(d=>d.pop), 'Kerletek réteg keresése...');
+      return;
+    }
+    
+    console.log('Kerület layer:', keruletLayer.get('name'));
+    var source = keruletLayer.getSource();
+    var allFeatures = source.getFeatures();
+    console.log('Total features:', allFeatures.length);
+    
+    var visible = [], totalChecked = 0;
+    allFeatures.forEach(f => {
+      totalChecked++;
+      try {
+        if (f.getGeometry() && f.getGeometry().intersectsExtent(extent)) {
+          var name = f.get('Kerületszám') || f.get('name') || f.get('kerület') || f.get('Kerület') || 'N/A';
+          var popField = f.get('Népesség(2022)[2]') || f.get('Népesség') || f.get('population') || f.get('pop');
+          var pop = parseInt(popField) || 0;
+          console.log('Visible:', name, pop);
+          if (name !== 'N/A' && pop > 0) visible.push({name, pop});
+        }
+      } catch(e) {
+        console.log('Feature error:', e);
+      }
+    });
+    
+    console.log('Checked', totalChecked, 'found', visible.length);
+    
+    if (visible.length === 0) {
+      // Show first 5 as demo
+      var demo = districtData.slice(0,5);
+      drawRadar(demo.map(d=>d.name), demo.map(d=>d.pop), 'ZOOM OUT - 5 demo kerület');
+    } else {
+      drawRadar(visible.map(v=>v.name), visible.map(v=>v.pop), `LÁTHATÓ (${visible.length})`);
+    }
+    
+  } catch(e) {
+    console.error('Error:', e);
+    drawRadar(['Hiba'], [0], 'F12 Console');
+  }
 }
+
 
 setTimeout(() => {
   if (!map) {
@@ -114,3 +168,4 @@ setTimeout(() => {
 </script>
     </body>
 </html>
+
