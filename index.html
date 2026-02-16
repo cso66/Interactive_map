@@ -64,6 +64,28 @@
                 <div id="popup-content"></div>
             </div>
         </div>
+            <body>
+        <div id="map">
+            <div id="popup" class="ol-popup">
+                <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+                <div id="popup-content"></div>
+            </div>
+        </div>
+
+        <!-- Plotly radar panel -->
+        <div id="plotly-panel" style="
+            position:absolute;
+            bottom:10px;
+            right:10px;
+            width:320px;
+            height:260px;
+            background:white;
+            border:1px solid #ccc;
+            z-index:1000;
+            padding:4px;
+            ">
+        </div>
+
         <script src="resources/qgis2web_expressions.js"></script>
         <script src="./resources/functions.js"></script>
         <script src="./resources/ol.js"></script>
@@ -75,4 +97,5 @@
         <script src="./resources/qgis2web.js"></script>
     </body>
 </html>
+
 
