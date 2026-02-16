@@ -140,13 +140,7 @@ function updateVisibleKeruletek(evt) {
 
     // IMPORTANT: this must match the field name in Kerletek_1.js
     // try 'Kerületszám' first, then some common fallbacks
-    const kerStr =
-      f.get('Kerületszám') ||
-      f.get('Kerulet_szam') ||
-      f.get('ker_szam') ||
-      f.get('name') ||
-      f.get('KERULET') ||
-      f.get('kerulet');
+    const kerStr = f.get('Városrés');   // this is where "I.", "II.", ... are stored
 
     if (!kerStr) return;
 
@@ -197,6 +191,7 @@ window.addEventListener('load', function () {
 
   </body>
 </html>
+
 
 
 
