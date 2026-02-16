@@ -116,27 +116,54 @@
     }
 
     function drawBarChart(visibleNames) {
-      const div = document.getElementById('barchart-panel');
-      if (!div) return;
+  const div = document.getElementById('barchart-panel');
+  if (!div) return;
 
-      const rows = districtData.filter(d => visibleNames.includes(d.name));
+  const rows = districtData.filter(d => visibleNames.includes(d.name));
+  if (rows.length === 0) return;
 
-      const data = [{
-        type: 'bar',
-        x: rows.map(r => r.name),
-        y: rows.map(r => r.year),
-        text: rows.map(r => r.year.toString()),
-        textposition: 'auto'
-      }];
+  const years = rows.map(r => r.year);
+  const minY = Math.min(...years);
+  const maxY = Math.max(...years);
 
-      const layout = {
-        title: { text: 'Létrehozás éve kerületenként' },
-        yaxis: { title: 'Év' },
-        margin: { t:40, l:40, r:20, b:40 }
-      };
+  // Synthwave palette: teal → purple → pink → neon yellow
+  const synthColors = [
+    '#00f5d4', // neon teal
+    '#4361ee', // electric blue
+    '#7209b7', // purple
+    '#ff006e', // hot pink
+    '#ffbe0b'  // neon yellow
+  ];
 
-      Plotly.newPlot(div, data, layout, {displayModeBar:false});
-    }
+  function synthColorForYear(year) {
+    const t = (year - minY) / (maxY - minY || 1); // 0..1
+    const idx = Math.min(
+      synthColors.length - 1,
+      Math.floor(t * (synthColors.length - 1))
+    );
+    return synthColors[idx];
+  }
+
+  const colors = rows.map(r => synthColorForYear(r.year));
+
+  const data = [{
+    type: 'bar',
+    x: rows.map(r => r.name),
+    y: years,
+    text: years.map(y => y.toString()),
+    textposition: 'auto',
+    marker: { color: colors }
+  }];
+
+  const layout = {
+    title: { text: 'Létrehozás éve kerületenként' },
+    yaxis: { title: 'Év', range: [1800, 2025] },
+    margin: { t:40, l:40, r:20, b:40 }
+  };
+
+  Plotly.newPlot(div, data, layout, {displayModeBar:false});
+}
+
 
     function updateVisibleKeruletek(evt) {
       if (!window.map) return;
@@ -220,3 +247,4 @@
     </script>
   </body>
 </html>
+
