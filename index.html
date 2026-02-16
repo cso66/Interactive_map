@@ -102,17 +102,14 @@
   const div = document.getElementById('plotly-panel');
 
   if (!labels.length) {
-    Plotly.newPlot(div, [], {title:{text:titleText}});
+    Plotly.newPlot(div, [], { title: { text: titleText } });
     return;
   }
 
-  // values = populations for visible districts
   const minV = Math.min(...values);
   const maxV = Math.max(...values);
 
-  // synthwave-like ramp: teal → blue → purple → pink
   const synth = ['#00f5d4', '#4361ee', '#7209b7', '#ff006e'];
-
   function colorForVal(v) {
     const t = (v - minV) / (maxV - minV || 1);
     const idx = Math.min(
@@ -121,21 +118,25 @@
     );
     return synth[idx];
   }
-
   const markerColors = values.map(v => colorForVal(v));
+
+  // Close the loop so the polygon is continuous
+  const rClosed = values.concat(values[0]);
+  const thetaClosed = labels.concat(labels[0]);
 
   const data = [{
     type: 'scatterpolar',
-    r: values,
-    theta: labels,
-    fill: 'toself',
+    r: rClosed,
+    theta: thetaClosed,
+    fill: 'toself',               // filled polygon
+    fillcolor: 'rgba(255,0,110,0.25)', // semi‑transparent synthwave pink
     name: 'Population',
     marker: {
       size: 10,
-      color: markerColors      // per‑point color by population
+      color: markerColors
     },
     line: {
-      color: '#ffffff',        // outline color
+      color: '#ff006e',
       width: 2
     }
   }];
@@ -146,8 +147,9 @@
     margin: { t:40, l:30, r:30, b:30 }
   };
 
-  Plotly.newPlot(div, data, layout, {displayModeBar: false});
+  Plotly.newPlot(div, data, layout, { displayModeBar: false });
 }
+
 
 
     function drawBarChart(visibleNames) {
@@ -282,6 +284,7 @@
     </script>
   </body>
 </html>
+
 
 
 
