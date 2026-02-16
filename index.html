@@ -33,7 +33,6 @@
             padding: 2px !important;
         } 
         </style>
-
         <style>
         html, body, #map {
             width: 100%;
@@ -42,63 +41,52 @@
             margin: 0;
         }
         </style>
-        <title></title>
+        <title>Budapest Districts + Population Radar</title>
     </head>
     <body>
+        <!-- SINGLE Plotly panel - positioned over map -->
         <div id="plotly-panel" style="
-    position:absolute;
-    bottom:10px;
-    right:10px;
-    width:500px;
-    height:400px;
-    background:white;
-    border:1px solid #ccc;
-    z-index:1000;
-    padding:4px;
-    ">
-</div>
+            position:absolute;
+            bottom:10px;
+            right:10px;
+            width:500px;
+            height:400px;
+            background:white;
+            border:2px solid #444;
+            z-index:1000;
+            padding:8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            ">
+        </div>
 
+        <!-- SINGLE map div -->
         <div id="map">
             <div id="popup" class="ol-popup">
                 <a href="#" id="popup-closer" class="ol-popup-closer"></a>
                 <div id="popup-content"></div>
             </div>
         </div>
-            <body>
-        <div id="map">
-            <div id="popup" class="ol-popup">
-                <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-                <div id="popup-content"></div>
-            </div>
-        </div>
 
-        <!-- Plotly radar panel -->
-       <div id="plotly-panel" style="
-    position:absolute;
-    bottom:10px;
-    right:10px;
-    width:500px;
-    height:400px;
-    background:white;
-    border:2px solid #444;
-    z-index:1000;
-    padding:8px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    ">
-</div>
-
+        <!-- Plotly CDN -->
+        <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+        
+        <!-- All qgis2web scripts -->
         <script src="resources/qgis2web_expressions.js"></script>
         <script src="./resources/functions.js"></script>
         <script src="./resources/ol.js"></script>
         <script src="./resources/ol-layerswitcher.js"></script>
-        <script src="layers/Kerletek_1.js"></script><script src="layers/Budapest_2.js"></script>
-        <script src="styles/Kerletek_1_style.js"></script><script src="styles/Budapest_2_style.js"></script>
+        <script src="layers/Kerletek_1.js"></script>
+        <script src="layers/Budapest_2.js"></script>
+        <script src="styles/Kerletek_1_style.js"></script>
+        <script src="styles/Budapest_2_style.js"></script>
         <script src="./layers/layers.js" type="text/javascript"></script> 
         <script src="./resources/Autolinker.min.js"></script>
         <script src="./resources/qgis2web.js"></script>
-                <script>
-        // Real Budapest districts data from your CSV
+
+        <!-- Your radar script - FIXED timing -->
+        <script>
+        // Real Budapest districts data from CSV [file:40]
         var districtData = [
           {name: 'I.', pop: 23685},
           {name: 'II.', pop: 86567},
@@ -126,10 +114,8 @@
         ];
 
         function drawRadar(names, pops) {
-          // Close loop for radar
           names.push(names[0]);
           pops.push(pops[0]);
-
           var data = [{
             type: 'scatterpolar',
             r: pops,
@@ -138,42 +124,35 @@
             line: {color: '#1f77b4', width: 2},
             marker: {color: '#add8e6'}
           }];
-
           var layout = {
-            title: 'Népesség (2022): ' + names.length + ' kerület',
+            title: 'Népesség (2022): ' + (names.length-1) + ' kerület',
             font: {size: 14, family: 'Arial'},
             polar: {
-              radialaxis: {
-                visible: true,
-                range: [0, 150000],
-                tickvals: [50000, 100000]
-              },
+              radialaxis: {visible: true, range: [0, 150000], tickvals: [50000, 100000]},
               bgcolor: 'rgba(248,248,255,0.8)'
             },
             margin: {l: 50, r: 50, t: 70, b: 50},
             showlegend: false,
             paper_bgcolor: 'rgba(255,255,255,0.95)'
           };
-
           Plotly.newPlot('plotly-panel', data, layout, {responsive: true});
         }
 
-        // Initial: show ALL districts
         function initialRadar() {
           var names = districtData.map(d => d.name);
           var pops = districtData.map(d => d.pop);
           drawRadar(names, pops);
         }
 
-        // Draw when page loads
-        window.addEventListener('load', function() {
-          initialRadar();
-        });
+        // Wait for qgis2web + Plotly to fully load
+        setTimeout(function() {
+          if (typeof Plotly !== 'undefined') {
+            initialRadar();
+            console.log('Radar chart loaded!');
+          } else {
+            console.error('Plotly not loaded!');
+          }
+        }, 2000);
         </script>
     </body>
 </html>
-
-
-
-
-
