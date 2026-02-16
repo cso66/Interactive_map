@@ -113,29 +113,6 @@ function drawRadar(labels, values, titleText) {
   };
   Plotly.newPlot(div, data, layout, {displayModeBar: false});
 }
-function drawBarChart(visibleNames) {
-  const div = document.getElementById('barchart-panel');
-  if (!div) return;
-
-  const rows = districtData.filter(d => visibleNames.includes(d.name));
-
-  const data = [{
-    type: 'bar',
-    x: rows.map(r => r.name),
-    y: rows.map(r => r.year),
-    text: rows.map(r => r.year.toString()),
-    textposition: 'auto'
-  }];
-
-  const layout = {
-    title: { text: 'Létrehozás éve kerületenként' },
-    yaxis: { title: 'Év' },
-    margin: { t:40, l:40, r:20, b:40 }
-  };
-
-  Plotly.newPlot(div, data, layout, {displayModeBar:false}); [web:48]
-}
-
 
 function updateVisibleKeruletek(evt) {
   if (!window.map) return;
@@ -160,6 +137,28 @@ function updateVisibleKeruletek(evt) {
     );
     return;
   }
+function drawBarChart(visibleNames) {
+  const div = document.getElementById('barchart-panel');
+  if (!div) return;
+
+  const rows = districtData.filter(d => visibleNames.includes(d.name));
+
+  const data = [{
+    type: 'bar',
+    x: rows.map(r => r.name),
+    y: rows.map(r => r.year),
+    text: rows.map(r => r.year.toString()),
+    textposition: 'auto'
+  }];
+
+  const layout = {
+    title: { text: 'Létrehozás éve kerületenként' },
+    yaxis: { title: 'Év' },
+    margin: { t:40, l:40, r:20, b:40 }
+  };
+
+  Plotly.newPlot(div, data, layout, {displayModeBar:false}); [web:48]
+}
 
   const source = keruletLayer.getSource();
   const allFeatures = source.getFeatures();
@@ -227,6 +226,7 @@ window.addEventListener('load', function () {
 
   </body>
 </html>
+
 
 
 
