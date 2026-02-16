@@ -56,7 +56,8 @@
     <script src="./resources/qgis2web.js"></script>
 
     <!-- Radar logic -->
-    <script>
+   <script>
+// 1) CSV-based population
 const districtData = [
   { name: "I.",    pop: 23685 },
   { name: "II.",   pop: 86567 },
@@ -100,85 +101,102 @@ function drawRadar(labels, values, titleText) {
   Plotly.newPlot(div, data, layout, {displayModeBar: false});
 }
 
-function drawDebug(titleText, msg) {
-  drawRadar(['Info'], [1], titleText + '\n' + msg);
-}
+function updateVisibleKeruletek(evt) {
+  if (!window.map) return;
 
-function updateVisibleKeruletek() {
-  try {
-    if (!window.map) throw 'No map';
+  // if called from moveend, prefer evt.map
+  const m = evt && evt.map ? evt.map : map;
+  const extent = m.getView().calculateExtent(m.getSize());
+  console.log('EXTENT', extent);
 
-    const extent = map.getView().calculateExtent(map.getSize());
+  // Find the district layer by name or title
+  const keruletLayer = m.getLayers().getArray().find(l =>
+    (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
+    (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
+  );
 
-    const keruletLayer = map.getLayers().getArray().find(l =>
-      (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
-      (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
+  if (!keruletLayer) {
+    console.warn('No kerület layer found, showing all districts.');
+    drawRadar(
+      districtData.map(d=>d.name),
+      districtData.map(d=>d.pop),
+      'Kerületek réteg nem található'
     );
+    return;
+  }
 
-    if (!keruletLayer) {
-      drawRadar(
-        districtData.map(d=>d.name),
-        districtData.map(d=>d.pop),
-        'Kerületek réteg nem található'
-      );
-      return;
-    }
+  const source = keruletLayer.getSource();
+  const allFeatures = source.getFeatures();
+  console.log('FEATURE COUNT', allFeatures.length);
 
-    const source = keruletLayer.getSource();
-    const allFeatures = source.getFeatures();
-    const visible = [];
+  const visible = [];
 
-    allFeatures.forEach(f => {
-      const geom = f.getGeometry();
-      if (geom && geom.intersectsExtent(extent)) {
-        const kerStr = f.get('Kerületszám');   // "I.", "II.", ...
-        // Look up population from districtData so the values are always correct
-        const rec = districtData.find(d => d.name === kerStr);
-        if (rec) {
-          visible.push({ name: rec.name, pop: rec.pop });
-        }
-      }
-    });
+  allFeatures.forEach(f => {
+    const geom = f.getGeometry();
+    if (!geom || !geom.intersectsExtent(extent)) return;
 
-    if (visible.length === 0) {
-      const demo = districtData.slice(0, 5);
-      drawRadar(
-        demo.map(d=>d.name),
-        demo.map(d=>d.pop),
-        'Nincs látható kerület – nagyíts rá Budapestre'
-      );
+    // DEBUG: log all attributes once
+    console.log('ATTRIBUTES', f.getProperties());
+
+    // IMPORTANT: this must match the field name in Kerletek_1.js
+    // try 'Kerületszám' first, then some common fallbacks
+    const kerStr =
+      f.get('Kerületszám') ||
+      f.get('Kerulet_szam') ||
+      f.get('ker_szam') ||
+      f.get('name') ||
+      f.get('KERULET') ||
+      f.get('kerulet');
+
+    if (!kerStr) return;
+
+    const rec = districtData.find(d => d.name === kerStr);
+    if (rec) {
+      visible.push({ name: rec.name, pop: rec.pop });
     } else {
-      drawRadar(
-        visible.map(v=>v.name),
-        visible.map(v=>v.pop),
-        `Látható kerületek (${visible.length})`
-      );
+      console.log('NO MATCH IN districtData FOR', kerStr);
     }
-  } catch (e) {
-    console.error(e);
-    drawRadar(['Hiba'], [0], 'Hiba – F12 Console');
+  });
+
+  if (visible.length === 0) {
+    drawRadar(
+      districtData.slice(0,5).map(d=>d.name),
+      districtData.slice(0,5).map(d=>d.pop),
+      'Nincs látható kerület – nagyíts Budapestre'
+    );
+  } else {
+    drawRadar(
+      visible.map(v=>v.name),
+      visible.map(v=>v.pop),
+      `Látható kerületek (${visible.length})`
+    );
   }
 }
 
-// Wait for qgis2web to create "map", then hook into moveend so it always
-// reflects the current map extent
+// Wait for qgis2web map, then wire moveend
 window.addEventListener('load', function () {
-  const MAX_TRIES = 20;
   let tries = 0;
   const timer = setInterval(function () {
     tries++;
     if (window.map) {
       clearInterval(timer);
-      updateVisibleKeruletek();           // initial render
-      map.on('moveend', updateVisibleKeruletek); // update on pan/zoom
-    } else if (tries > MAX_TRIES) {
+
+      // Initial render
+      updateVisibleKeruletek({map});
+
+      // This MUST fire to update chart on pan/zoom
+      map.on('moveend', updateVisibleKeruletek);
+      console.log('moveend listener attached');
+    } else if (tries > 20) {
       clearInterval(timer);
-      drawDebug('❌ NO MAP', 'map object not found');
+      console.error('map not found');
     }
   }, 300);
 });
 </script>
+
   </body>
 </html>
+
 
 
