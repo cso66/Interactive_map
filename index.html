@@ -57,8 +57,7 @@
 
     <!-- Radar logic -->
     <script>
-      // Example fallback data (you can extend this)
-      const districtData = [
+const districtData = [
   { name: "I.",    pop: 23685 },
   { name: "II.",   pop: 86567 },
   { name: "III.",  pop: 124746 },
@@ -84,97 +83,102 @@
   { name: "XXIII.",pop: 22633 }
 ];
 
+function drawRadar(labels, values, titleText) {
+  const div = document.getElementById('plotly-panel');
+  const data = [{
+    type: 'scatterpolar',
+    r: values,
+    theta: labels,
+    fill: 'toself',
+    name: 'Population'
+  }];
+  const layout = {
+    title: { text: titleText },
+    polar: { radialaxis: { visible: true } },
+    margin: { t:40, l:30, r:30, b:30 }
+  };
+  Plotly.newPlot(div, data, layout, {displayModeBar: false});
+}
 
-      function drawRadar(labels, values, titleText) {
-        const div = document.getElementById('plotly-panel');
-        const data = [{
-          type: 'scatterpolar',
-          r: values,
-          theta: labels,
-          fill: 'toself',
-          name: 'Population'
-        }];
-        const layout = {
-          title: { text: titleText },
-          polar: { radialaxis: { visible: true } },
-          margin: { t:40, l:30, r:30, b:30 }
-        };
-        Plotly.newPlot(div, data, layout, {displayModeBar: false});
-      }
+function drawDebug(titleText, msg) {
+  drawRadar(['Info'], [1], titleText + '\n' + msg);
+}
 
-      function drawDebug(titleText, msg) {
-        drawRadar(['Info'], [1], titleText + '\n' + msg);
-      }
+function updateVisibleKeruletek() {
+  try {
+    if (!window.map) throw 'No map';
 
-      function updateVisibleKeruletek() {
-        try {
-          if (!window.map) throw 'No map';
+    const extent = map.getView().calculateExtent(map.getSize());
 
-          const extent = map.getView().calculateExtent(map.getSize());
+    const keruletLayer = map.getLayers().getArray().find(l =>
+      (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
+      (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
+    );
 
-          const keruletLayer = map.getLayers().getArray().find(l =>
-            (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
-            (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
-          );
+    if (!keruletLayer) {
+      drawRadar(
+        districtData.map(d=>d.name),
+        districtData.map(d=>d.pop),
+        'Kerületek réteg nem található'
+      );
+      return;
+    }
 
-          if (!keruletLayer) {
-            drawRadar(districtData.map(d=>d.name), districtData.map(d=>d.pop),
-                      'Kerületek réteg nem található');
-            return;
-          }
+    const source = keruletLayer.getSource();
+    const allFeatures = source.getFeatures();
+    const visible = [];
 
-          const source = keruletLayer.getSource();
-          const allFeatures = source.getFeatures();
-          const visible = [];
-
-          allFeatures.forEach(f => {
-            const geom = f.getGeometry();
-            if (geom && geom.intersectsExtent(extent)) {
-              const name = f.get('Kerületszám') || f.get('name') ||
-                           f.get('kerület') || f.get('Kerület') || 'N/A';
-              const popField = f.get('Népesség(2022)[2]') || f.get('Népesség') ||
-                               f.get('population') || f.get('pop');
-              const pop = parseInt(popField) || 0;
-              if (name !== 'N/A' && pop > 0) visible.push({name, pop});
-            }
-          });
-
-          if (visible.length === 0) {
-            const demo = districtData.slice(0, 5);
-            drawRadar(demo.map(d=>d.name), demo.map(d=>d.pop),
-                      'Nincs látható kerület – demo');
-          } else {
-            drawRadar(
-              visible.map(v=>v.name),
-              visible.map(v=>v.pop),
-              `Látható kerületek (${visible.length})`
-            );
-          }
-        } catch (e) {
-          console.error(e);
-          drawRadar(['Hiba'], [0], 'Hiba – F12 Console');
+    allFeatures.forEach(f => {
+      const geom = f.getGeometry();
+      if (geom && geom.intersectsExtent(extent)) {
+        const kerStr = f.get('Kerületszám');   // "I.", "II.", ...
+        // Look up population from districtData so the values are always correct
+        const rec = districtData.find(d => d.name === kerStr);
+        if (rec) {
+          visible.push({ name: rec.name, pop: rec.pop });
         }
       }
+    });
 
-      // Wait for qgis2web to finish creating "map", then init radar once and attach listeners
-      window.addEventListener('load', function () {
-        const MAX_TRIES = 20;
-        let tries = 0;
-        const timer = setInterval(function () {
-          tries++;
-          if (window.map) {
-            clearInterval(timer);
-            // initial plot
-            updateVisibleKeruletek();
-            // update on move
-            map.on('moveend', updateVisibleKeruletek);
-          } else if (tries > MAX_TRIES) {
-            clearInterval(timer);
-            drawDebug('❌ NO MAP', 'map object not found');
-          }
-        }, 300);
-      });
-    </script>
+    if (visible.length === 0) {
+      const demo = districtData.slice(0, 5);
+      drawRadar(
+        demo.map(d=>d.name),
+        demo.map(d=>d.pop),
+        'Nincs látható kerület – nagyíts rá Budapestre'
+      );
+    } else {
+      drawRadar(
+        visible.map(v=>v.name),
+        visible.map(v=>v.pop),
+        `Látható kerületek (${visible.length})`
+      );
+    }
+  } catch (e) {
+    console.error(e);
+    drawRadar(['Hiba'], [0], 'Hiba – F12 Console');
+  }
+}
+
+// Wait for qgis2web to create "map", then hook into moveend so it always
+// reflects the current map extent
+window.addEventListener('load', function () {
+  const MAX_TRIES = 20;
+  let tries = 0;
+  const timer = setInterval(function () {
+    tries++;
+    if (window.map) {
+      clearInterval(timer);
+      updateVisibleKeruletek();           // initial render
+      map.on('moveend', updateVisibleKeruletek); // update on pan/zoom
+    } else if (tries > MAX_TRIES) {
+      clearInterval(timer);
+      drawDebug('❌ NO MAP', 'map object not found');
+    }
+  }, 300);
+});
+</script>
   </body>
 </html>
+
 
