@@ -27,23 +27,25 @@
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       }
+      #barchart-panel {
+        position:absolute;
+        bottom:10px;
+        left:10px;
+        width:500px;
+        height:300px;
+        background:white;
+        border:2px solid #444;
+        z-index:1000;
+        padding:8px;
+        border-radius:8px;
+        box-shadow:0 4px 8px rgba(0,0,0,0.2);
+      }
     </style>
   </head>
   <body>
     <div id="plotly-panel"></div>
-    <div id="barchart-panel" style="
-  position:absolute;
-  bottom:10px;
-  left:10px;
-  width:500px;
-  height:300px;
-  background:white;
-  border:2px solid #444;
-  z-index:1000;
-  padding:8px;
-  border-radius:8px;
-  box-shadow:0 4px 8px rgba(0,0,0,0.2);
-"></div>
+    <div id="barchart-panel"></div>
+
     <div id="map">
       <div id="popup" class="ol-popup">
         <a href="#" id="popup-closer" class="ol-popup-closer"></a>
@@ -67,168 +69,154 @@
     <script src="./resources/Autolinker.min.js"></script>
     <script src="./resources/qgis2web.js"></script>
 
-    <!-- Radar logic -->
-   <script>
-// 1) CSV-based population
-const districtData = [
-  { name: "I.",    pop: 23685, year: 1873 },
-  { name: "II.",   pop: 86567, year: 1873 },
-  { name: "III.",  pop: 124746,year: 1873 },
-  { name: "IV.",   pop: 94391, year: 1950 },
-  { name: "V.",    pop: 21931, year: 1873 },
-  { name: "VI.",   pop: 35441, year: 1873 },
-  { name: "VII.",  pop: 48943, year: 1873 },
-  { name: "VIII.", pop: 70048, year: 1873 },
-  { name: "IX.",   pop: 59588, year: 1873 },
-  { name: "X.",    pop: 75628, year: 1873 },
-  { name: "XI.",   pop: 141090,year: 1934 },
-  { name: "XII.",  pop: 57295, year: 1940 },
-  { name: "XIII.", pop: 122973,year: 1938 },
-  { name: "XIV.",  pop: 118705,year: 1935 },
-  { name: "XV.",   pop: 77091, year: 1950 },
-  { name: "XVI.",  pop: 73270, year: 1950 },
-  { name: "XVII.", pop: 84922, year: 1950 },
-  { name: "XVIII.",pop: 99400, year: 1950 },
-  { name: "XIX.",  pop: 56507, year: 1950 },
-  { name: "XX.",   pop: 63512, year: 1950 },
-  { name: "XXI.",  pop: 70442, year: 1950 },
-  { name: "XXII.", pop: 56534, year: 1950 },
-  { name: "XXIII.",pop: 22633, year: 1994 }
-];  // years from Létrehozásának dátuma column [file:31]
+    <!-- Radar + bar logic -->
+    <script>
+    // CSV-based population + creation year
+    const districtData = [
+      { name: "I.",    pop: 23685, year: 1873 },
+      { name: "II.",   pop: 86567, year: 1873 },
+      { name: "III.",  pop: 124746,year: 1873 },
+      { name: "IV.",   pop: 94391, year: 1950 },
+      { name: "V.",    pop: 21931, year: 1873 },
+      { name: "VI.",   pop: 35441, year: 1873 },
+      { name: "VII.",  pop: 48943, year: 1873 },
+      { name: "VIII.", pop: 70048, year: 1873 },
+      { name: "IX.",   pop: 59588, year: 1873 },
+      { name: "X.",    pop: 75628, year: 1873 },
+      { name: "XI.",   pop: 141090,year: 1934 },
+      { name: "XII.",  pop: 57295, year: 1940 },
+      { name: "XIII.", pop: 122973,year: 1938 },
+      { name: "XIV.",  pop: 118705,year: 1935 },
+      { name: "XV.",   pop: 77091, year: 1950 },
+      { name: "XVI.",  pop: 73270, year: 1950 },
+      { name: "XVII.", pop: 84922, year: 1950 },
+      { name: "XVIII.",pop: 99400, year: 1950 },
+      { name: "XIX.",  pop: 56507, year: 1950 },
+      { name: "XX.",   pop: 63512, year: 1950 },
+      { name: "XXI.",  pop: 70442, year: 1950 },
+      { name: "XXII.", pop: 56534, year: 1950 },
+      { name: "XXIII.",pop: 22633, year: 1994 }
+    ];
 
-
-function drawRadar(labels, values, titleText) {
-  const div = document.getElementById('plotly-panel');
-  const data = [{
-    type: 'scatterpolar',
-    r: values,
-    theta: labels,
-    fill: 'toself',
-    name: 'Population'
-  }];
-  const layout = {
-    title: { text: titleText },
-    polar: { radialaxis: { visible: true } },
-    margin: { t:40, l:30, r:30, b:30 }
-  };
-  Plotly.newPlot(div, data, layout, {displayModeBar: false});
-}
-
-function updateVisibleKeruletek(evt) {
-  if (!window.map) return;
-
-  // if called from moveend, prefer evt.map
-  const m = evt && evt.map ? evt.map : map;
-  const extent = m.getView().calculateExtent(m.getSize());
-  console.log('EXTENT', extent);
-
-  // Find the district layer by name or title
-  const keruletLayer = m.getLayers().getArray().find(l =>
-    (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
-    (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
-  );
-
-  if (!keruletLayer) {
-    console.warn('No kerület layer found, showing all districts.');
-    drawRadar(
-      districtData.map(d=>d.name),
-      districtData.map(d=>d.pop),
-      'Kerületek réteg nem található'
-    );
-    return;
-  }
-function drawBarChart(visibleNames) {
-  const div = document.getElementById('barchart-panel');
-  if (!div) return;
-
-  const rows = districtData.filter(d => visibleNames.includes(d.name));
-
-  const data = [{
-    type: 'bar',
-    x: rows.map(r => r.name),
-    y: rows.map(r => r.year),
-    text: rows.map(r => r.year.toString()),
-    textposition: 'auto'
-  }];
-
-  const layout = {
-    title: { text: 'Létrehozás éve kerületenként' },
-    yaxis: { title: 'Év' },
-    margin: { t:40, l:40, r:20, b:40 }
-  };
-
-  Plotly.newPlot(div, data, layout, {displayModeBar:false}); [web:48]
-}
-
-  const source = keruletLayer.getSource();
-  const allFeatures = source.getFeatures();
-  console.log('FEATURE COUNT', allFeatures.length);
-
-  const visible = [];
-
-  allFeatures.forEach(f => {
-    const geom = f.getGeometry();
-    if (!geom || !geom.intersectsExtent(extent)) return;
-
-    // DEBUG: log all attributes once
-    console.log('ATTRIBUTES', f.getProperties());
-
-    // IMPORTANT: this must match the field name in Kerletek_1.js
-    // try 'Kerületszám' first, then some common fallbacks
-    const kerStr = f.get('Városrés');   // this is where "I.", "II.", ... are stored
-
-    if (!kerStr) return;
-
-    const rec = districtData.find(d => d.name === kerStr);
-    if (rec) {
-      visible.push({ name: rec.name, pop: rec.pop });
-    } else {
-      console.log('NO MATCH IN districtData FOR', kerStr);
+    function drawRadar(labels, values, titleText) {
+      const div = document.getElementById('plotly-panel');
+      const data = [{
+        type: 'scatterpolar',
+        r: values,
+        theta: labels,
+        fill: 'toself',
+        name: 'Population'
+      }];
+      const layout = {
+        title: { text: titleText },
+        polar: { radialaxis: { visible: true } },
+        margin: { t:40, l:30, r:30, b:30 }
+      };
+      Plotly.newPlot(div, data, layout, {displayModeBar: false});
     }
-  });
 
-  if (visible.length === 0) {
-    drawRadar(
-      districtData.slice(0,5).map(d=>d.name),
-      districtData.slice(0,5).map(d=>d.pop),
-      'Nincs látható kerület – nagyíts Budapestre'
-    );
-  } else {
-    drawRadar(
-      visible.map(v=>v.name),
-      visible.map(v=>v.pop),
-      `Látható kerületek (${visible.length})`
-    );
-  }
-}
+    function drawBarChart(visibleNames) {
+      const div = document.getElementById('barchart-panel');
+      if (!div) return;
 
-// Wait for qgis2web map, then wire moveend
-window.addEventListener('load', function () {
-  let tries = 0;
-  const timer = setInterval(function () {
-    tries++;
-    if (window.map) {
-      clearInterval(timer);
+      const rows = districtData.filter(d => visibleNames.includes(d.name));
 
-      // Initial render
-      updateVisibleKeruletek({map});
+      const data = [{
+        type: 'bar',
+        x: rows.map(r => r.name),
+        y: rows.map(r => r.year),
+        text: rows.map(r => r.year.toString()),
+        textposition: 'auto'
+      }];
 
-      // This MUST fire to update chart on pan/zoom
-      map.on('moveend', updateVisibleKeruletek);
-      console.log('moveend listener attached');
-    } else if (tries > 20) {
-      clearInterval(timer);
-      console.error('map not found');
+      const layout = {
+        title: { text: 'Létrehozás éve kerületenként' },
+        yaxis: { title: 'Év' },
+        margin: { t:40, l:40, r:20, b:40 }
+      };
+
+      Plotly.newPlot(div, data, layout, {displayModeBar:false});
     }
-  }, 300);
-});
-</script>
 
+    function updateVisibleKeruletek(evt) {
+      if (!window.map) return;
+
+      const m = evt && evt.map ? evt.map : map;
+      const extent = m.getView().calculateExtent(m.getSize());
+      console.log('EXTENT', extent);
+
+      const keruletLayer = m.getLayers().getArray().find(l =>
+        (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
+        (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
+      );
+
+      if (!keruletLayer) {
+        console.warn('No kerület layer found, showing all districts.');
+        const allNames = districtData.map(d => d.name);
+        drawRadar(allNames, districtData.map(d=>d.pop),
+                  'Kerületek réteg nem található');
+        drawBarChart(allNames);
+        return;
+      }
+
+      const source = keruletLayer.getSource();
+      const allFeatures = source.getFeatures();
+      console.log('FEATURE COUNT', allFeatures.length);
+
+      const visible = [];
+
+      allFeatures.forEach(f => {
+        const geom = f.getGeometry();
+        if (!geom || !geom.intersectsExtent(extent)) return;
+
+        const kerStr = f.get('Városrés'); // "I.", "II.", ...
+
+        if (!kerStr) return;
+
+        const rec = districtData.find(d => d.name === kerStr);
+        if (rec) {
+          visible.push({ name: rec.name, pop: rec.pop });
+        } else {
+          console.log('NO MATCH IN districtData FOR', kerStr);
+        }
+      });
+
+      if (visible.length === 0) {
+        const demo = districtData.slice(0,5);
+        const demoNames = demo.map(d=>d.name);
+        drawRadar(
+          demoNames,
+          demo.map(d=>d.pop),
+          'Nincs látható kerület – nagyíts Budapestre'
+        );
+        drawBarChart(demoNames);
+      } else {
+        const names = visible.map(v=>v.name);
+        drawRadar(
+          names,
+          visible.map(v=>v.pop),
+          `Látható kerületek (${visible.length})`
+        );
+        drawBarChart(names);
+      }
+    }
+
+    // Wait for qgis2web map, then wire moveend
+    window.addEventListener('load', function () {
+      let tries = 0;
+      const timer = setInterval(function () {
+        tries++;
+        if (window.map) {
+          clearInterval(timer);
+          updateVisibleKeruletek({map});          // initial render
+          map.on('moveend', updateVisibleKeruletek); // update on pan/zoom
+          console.log('moveend listener attached');
+        } else if (tries > 20) {
+          clearInterval(timer);
+          console.error('map not found');
+        }
+      }, 300);
+    });
+    </script>
   </body>
 </html>
-
-
-
-
-
-
