@@ -99,21 +99,56 @@
     ];
 
     function drawRadar(labels, values, titleText) {
-      const div = document.getElementById('plotly-panel');
-      const data = [{
-        type: 'scatterpolar',
-        r: values,
-        theta: labels,
-        fill: 'toself',
-        name: 'Population'
-      }];
-      const layout = {
-        title: { text: titleText },
-        polar: { radialaxis: { visible: true } },
-        margin: { t:40, l:30, r:30, b:30 }
-      };
-      Plotly.newPlot(div, data, layout, {displayModeBar: false});
+  const div = document.getElementById('plotly-panel');
+
+  if (!labels.length) {
+    Plotly.newPlot(div, [], {title:{text:titleText}});
+    return;
+  }
+
+  // values = populations for visible districts
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+
+  // synthwave-like ramp: teal → blue → purple → pink
+  const synth = ['#00f5d4', '#4361ee', '#7209b7', '#ff006e'];
+
+  function colorForVal(v) {
+    const t = (v - minV) / (maxV - minV || 1);
+    const idx = Math.min(
+      synth.length - 1,
+      Math.floor(t * (synth.length - 1))
+    );
+    return synth[idx];
+  }
+
+  const markerColors = values.map(v => colorForVal(v));
+
+  const data = [{
+    type: 'scatterpolar',
+    r: values,
+    theta: labels,
+    fill: 'toself',
+    name: 'Population',
+    marker: {
+      size: 10,
+      color: markerColors      // per‑point color by population
+    },
+    line: {
+      color: '#ffffff',        // outline color
+      width: 2
     }
+  }];
+
+  const layout = {
+    title: { text: titleText },
+    polar: { radialaxis: { visible: true } },
+    margin: { t:40, l:30, r:30, b:30 }
+  };
+
+  Plotly.newPlot(div, data, layout, {displayModeBar: false});
+}
+
 
     function drawBarChart(visibleNames) {
       const div = document.getElementById('barchart-panel');
@@ -247,6 +282,7 @@
     </script>
   </body>
 </html>
+
 
 
 
