@@ -116,23 +116,23 @@
     }
 
     function drawBarChart(visibleNames) {
-  const div = document.getElementById('barchart-panel');
-  if (!div) return;
+      const div = document.getElementById('barchart-panel');
+      if (!div) return;
 
-  const rows = districtData.filter(d => visibleNames.includes(d.name));
-  if (rows.length === 0) return;
+      const rows = districtData.filter(d => visibleNames.includes(d.name));
+      if (rows.length === 0) return;
 
-  const years = rows.map(r => r.year);
-  const minY = Math.min(...years);
-  const maxY = Math.max(...years);
+      const years = rows.map(r => r.year);
+      const minY = Math.min(...years);
+      const maxY = Math.max(...years);
 
   // Synthwave palette: teal → purple → pink → neon yellow
-  const synthColors = [
-    '#00f5d4', // neon teal
-    '#4361ee', // electric blue
-    '#7209b7', // purple
-    '#ff006e', // hot pink
-    '#ffbe0b'  // neon yellow
+      const synthColors = [
+        '#00f5d4', // neon teal
+        '#4361ee', // electric blue
+        '#7209b7', // purple
+        '#ff006e', // hot pink
+        '#ffbe0b'  // neon yellow
   ];
 
   function synthColorForYear(year) {
@@ -247,4 +247,5 @@
     </script>
   </body>
 </html>
+
 
