@@ -279,90 +279,71 @@ function drawDensityTornado(visibleNames) {
 }
 
 
-    function updateVisibleKeruletek(evt) {
-      if (!window.map) return;
+   function updateVisibleKeruletek(evt) {
+  if (!window.map) return;
 
-      const m = evt && evt.map ? evt.map : map;
-      const extent = m.getView().calculateExtent(m.getSize());
-      console.log('EXTENT', extent);
+  const m = evt && evt.map ? evt.map : map;
+  const extent = m.getView().calculateExtent(m.getSize());
+  console.log('EXTENT', extent);
 
-      const keruletLayer = m.getLayers().getArray().find(l =>
-        (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
-        (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
-      );
+  const keruletLayer = m.getLayers().getArray().find(l =>
+    (l.get('name')  && l.get('name').toLowerCase().includes('kerlet')) ||
+    (l.get('title') && l.get('title').toLowerCase().includes('kerlet'))
+  );
 
-      if (!keruletLayer) {
-        console.warn('No kerület layer found, showing all districts.');
-        const allNames = districtData.map(d => d.name);
-        drawRadar(allNames, districtData.map(d=>d.pop),
-                  'Kerületek réteg nem található');
-        drawBarChart(allNames);
-        return;
-      }
+  if (!keruletLayer) {
+    console.warn('No kerület layer found, showing all districts.');
+    const allNames = districtData.map(d => d.name);
+    drawRadar(allNames, districtData.map(d=>d.pop),
+              'Kerületek réteg nem található');
+    drawBarChart(allNames);
+    drawDensityTornado(allNames);
+    return;
+  }
 
-      const source = keruletLayer.getSource();
-      const allFeatures = source.getFeatures();
-      console.log('FEATURE COUNT', allFeatures.length);
+  const source = keruletLayer.getSource();
+  const allFeatures = source.getFeatures();
+  console.log('FEATURE COUNT', allFeatures.length);
 
-      const visible = [];
+  const visible = [];
 
-      allFeatures.forEach(f => {
-        const geom = f.getGeometry();
-        if (!geom || !geom.intersectsExtent(extent)) return;
+  allFeatures.forEach(f => {
+    const geom = f.getGeometry();
+    if (!geom || !geom.intersectsExtent(extent)) return;
 
-        const kerStr = f.get('Városrés'); // "I.", "II.", ...
+    const kerStr = f.get('Városrés'); // "I.", "II.", ...
 
-        if (!kerStr) return;
+    if (!kerStr) return;
 
-        const rec = districtData.find(d => d.name === kerStr);
-        if (rec) {
-          visible.push({ name: rec.name, pop: rec.pop });
-        } else {
-          console.log('NO MATCH IN districtData FOR', kerStr);
-        }
-      });
-
-      if (visible.length === 0) {
-        const demo = districtData.slice(0,5);
-        const demoNames = demo.map(d=>d.name);
-        drawRadar(
-          demoNames,
-          demo.map(d=>d.pop),
-          'Nincs látható kerület – nagyíts Budapestre'
-        );
-        drawBarChart(demoNames);
-      } else {
-        const names = visible.map(v=>v.name);
-        drawRadar(
-          names,
-          visible.map(v=>v.pop),
-          `Látható kerületek lakossága (${visible.length})`
-        );
-        drawBarChart(names);
-      }
+    const rec = districtData.find(d => d.name === kerStr);
+    if (rec) {
+      visible.push({ name: rec.name, pop: rec.pop });
+    } else {
+      console.log('NO MATCH IN districtData FOR', kerStr);
     }
-      if (visible.length === 0) {
-  const demo = districtData.slice(0,5);
-  const demoNames = demo.map(d=>d.name);
-  drawRadar(
-    demoNames,
-    demo.map(d=>d.pop),
-    'Nincs látható kerület – nagyíts Budapestre'
-  );
-  drawBarChart(demoNames);
-  drawDensityTornado(demoNames);
-} else {
-  const names = visible.map(v=>v.name);
-  drawRadar(
-    names,
-    visible.map(v=>v.pop),
-    `Látható kerületek (${visible.length})`
-  );
-  drawBarChart(names);
-  drawDensityTornado(names);
+  });
+
+  if (visible.length === 0) {
+    const demo = districtData.slice(0,5);
+    const demoNames = demo.map(d=>d.name);
+    drawRadar(
+      demoNames,
+      demo.map(d=>d.pop),
+      'Nincs látható kerület – nagyíts Budapestre'
+    );
+    drawBarChart(demoNames);
+    drawDensityTornado(demoNames);
+  } else {
+    const names = visible.map(v=>v.name);
+    drawRadar(
+      names,
+      visible.map(v=>v.pop),
+      `Látható kerületek lakossága (${visible.length})`
+    );
+    drawBarChart(names);
+    drawDensityTornado(names);
+  }
 }
-
-
     // Wait for qgis2web map, then wire moveend
     window.addEventListener('load', function () {
       let tries = 0;
@@ -382,6 +363,7 @@ function drawDensityTornado(visibleNames) {
     </script>
   </body>
 </html>
+
 
 
 
