@@ -279,7 +279,7 @@ function drawDensityTornado(visibleNames) {
 }
 
 
-   function updateVisibleKeruletek(evt) {
+function updateVisibleKeruletek(evt) {
   if (!window.map) return;
 
   const m = evt && evt.map ? evt.map : map;
@@ -323,27 +323,6 @@ function drawDensityTornado(visibleNames) {
     }
   });
 
-  if (visible.length === 0) {
-    const demo = districtData.slice(0,5);
-    const demoNames = demo.map(d=>d.name);
-    drawRadar(
-      demoNames,
-      demo.map(d=>d.pop),
-      'Nincs látható kerület – nagyíts Budapestre'
-    );
-    drawBarChart(demoNames);
-    drawDensityTornado(demoNames);
-  } else {
-    const names = visible.map(v=>v.name);
-    drawRadar(
-      names,
-      visible.map(v=>v.pop),
-      `Látható kerületek lakossága (${visible.length})`
-    );
-    drawBarChart(names);
-    drawDensityTornado(names);
-  }
-}
     // Wait for qgis2web map, then wire moveend
     window.addEventListener('load', function () {
       let tries = 0;
@@ -363,6 +342,7 @@ function drawDensityTornado(visibleNames) {
     </script>
   </body>
 </html>
+
 
 
 
